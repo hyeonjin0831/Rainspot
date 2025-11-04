@@ -3,194 +3,547 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Budget Tracker</title>
+  <title>잔고 요정 (Balance Fairy)</title>
+  <!-- Load Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* Custom font fallback for Korean and general text */
     body {
-      font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
-      background: linear-gradient(135deg, #e3f2fd, #f9f9f9);
-      color: #333;
-      text-align: center;
-      margin: 0;
-      padding: 3rem 1rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      font-family: 'Inter', 'Pretendard', 'Noto Sans KR', sans-serif;
       min-height: 100vh;
     }
 
-    h1 {
-      font-size: 2.2rem;
-      color: #222;
-      margin-bottom: 1rem;
-    }
-
-    .container {
-      background: #fff;
-      border-radius: 20px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-      padding: 2rem;
-      max-width: 400px;
-      width: 100%;
-      transition: all 0.3s ease;
-    }
-
-    .container:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 10px 28px rgba(0,0,0,0.12);
-    }
-
-    input {
-      padding: 12px 14px;
-      margin: 10px 0;
-      width: 85%;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      font-size: 0.95rem;
-      transition: border-color 0.3s ease;
-    }
-
-    input:focus {
-      border-color: #4a90e2;
-      outline: none;
-    }
-
-    button {
-      background: #4a90e2;
-      color: #fff;
-      border: none;
-      padding: 12px 22px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.95rem;
-      transition: background 0.3s ease;
-      margin-top: 8px;
-    }
-
-    button:hover {
-      background: #357abd;
-    }
-
-    .progress {
-      margin-top: 25px;
-      height: 25px;
-      width: 100%;
-      background: #eee;
-      border-radius: 14px;
-      overflow: hidden;
-    }
-
+    /* Custom progress bar styles to match Tailwind philosophy */
     .progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, #4a90e2, #6fc2ff);
-      width: 0%;
       transition: width 0.5s ease;
+      background: linear-gradient(90deg, #3b82f6, #60a5fa);
     }
 
-    #status {
-      margin-top: 12px;
-      font-size: 1rem;
-      font-weight: 500;
-      color: #333;
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
     }
 
-    hr {
-      margin: 1.5rem 0;
-      border: none;
-      height: 1px;
-      background: #eee;
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
     }
 
-    .reset-btn {
-      background: #d3d3d3;
-      color: #333;
+    .modal-content {
+      background-color: white;
+      padding: 1.5rem;
+      border-radius: 1rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      max-width: 300px;
+      width: 90%;
+      text-align: center;
+      transform: translateY(-20px);
+      transition: transform 0.3s ease;
     }
 
-    footer {
-      margin-top: 2rem;
-      font-size: 0.8rem;
-      color: #666;
+    .modal-overlay.open .modal-content {
+      transform: translateY(0);
+    }
+
+    #loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.8);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.5rem;
+        font-weight: 600;
     }
   </style>
 </head>
-<body>
-  <h1>💰 Budget Tracker</h1>
-  <div class="container">
-    <p>한 달 예산을 입력하고, 소비를 추가하면<br>예산 대비 진행 상황을 확인할 수 있습니다.</p>
+<body class="bg-blue-50 flex flex-col items-center justify-center p-4">
 
-    <input type="number" id="budget" placeholder="예산 (원)" /><br>
-    <button onclick="setBudget()">예산 설정</button>
+  <!-- Loading Overlay -->
+  <div id="loading-overlay">
+    데이터 로딩 중...
+  </div>
+  
+  <h1 class="text-4xl font-extrabold text-gray-800 mb-6 flex items-center">
+    <span class="mr-2">💰</span> 잔고 요정 (Balance Fairy)
+  </h1>
 
-    <hr>
+  <div id="main-container" class="w-full max-w-sm bg-white p-6 rounded-2xl shadow-xl hover:shadow-2xl transition duration-300 ease-in-out transform hover:-translate-y-1">
+    <p class="text-gray-600 mb-6 text-center text-sm">
+      한 달 예산을 설정하고 소비를 기록하여<br>실시간으로 예산 진행 상황을 확인하세요.
+    </p>
 
-    <input type="number" id="expense" placeholder="소비 금액 (원)" /><br>
-    <button onclick="addExpense()">소비 추가</button>
-
-    <div class="progress">
-      <div class="progress-bar" id="bar"></div>
+    <!-- User ID Display -->
+    <div class="text-xs text-gray-400 mb-4 text-left">
+      User ID: <span id="user-id-display" class="font-mono text-gray-600 truncate">Connecting...</span>
     </div>
 
-    <p id="status"></p>
-    <button class="reset-btn" onclick="resetMonth()">리셋</button>
+    <div class="space-y-4">
+      <!-- Budget Input -->
+      <div class="flex flex-col">
+        <input type="number" id="budget-input" placeholder="예산 금액 (원)" 
+               class="p-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition duration-150" />
+        <button id="set-budget-btn" onclick="setBudget()" 
+                class="w-full bg-blue-600 text-white font-semibold py-3 mt-2 rounded-xl hover:bg-blue-700 transition duration-200 shadow-md hover:shadow-lg">
+          예산 설정
+        </button>
+      </div>
+
+      <hr class="border-t border-gray-100 my-4">
+
+      <!-- Expense Input -->
+      <div class="flex flex-col">
+        <input type="number" id="expense-input" placeholder="소비 금액 (원)" 
+               class="p-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition duration-150" />
+        <button onclick="addExpense()" 
+                class="w-full bg-green-500 text-white font-semibold py-3 mt-2 rounded-xl hover:bg-green-600 transition duration-200 shadow-md hover:shadow-lg">
+          소비 추가
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="mt-6">
+      <div class="h-6 w-full bg-gray-200 rounded-full overflow-hidden shadow-inner">
+        <div id="bar" class="progress-bar h-full" style="width: 0%;"></div>
+      </div>
+      <p id="status" class="mt-3 text-lg font-medium text-gray-700">예산이 설정되지 않았습니다.</p>
+    </div>
+    
+    <!-- Reset Button -->
+    <button onclick="resetMonth()" 
+            class="w-full mt-6 bg-gray-300 text-gray-800 font-semibold py-3 rounded-xl hover:bg-gray-400 transition duration-200 shadow-md">
+      리셋 (새로운 달 시작)
+    </button>
   </div>
 
-  <footer>Team 3 - 이나경, 최현서, 김수아랑, 김혜진, 이현진</footer>
+  <!-- Custom Alert/Confirm Modal (Refactored) -->
+  <div id="custom-modal" class="modal-overlay">
+    <div class="modal-content">
+      <p id="modal-message" class="text-gray-800 mb-4 font-medium"></p>
+      
+      <!-- Confirmation Buttons Group (Hidden by default for Alerts) -->
+      <div id="modal-confirm-group" class="hidden space-x-4 justify-center">
+        <!-- Cancel button is blue by default -->
+        <button id="modal-cancel-btn" onclick="closeModal()" 
+                class="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-150">취소</button>
+        <!-- Confirm button is red (destructive/primary) -->
+        <button id="modal-confirm-btn" 
+                class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 transition duration-150">확인</button>
+      </div>
+      
+      <!-- Alert Button (Default for simple messages) -->
+      <button id="modal-alert-btn" onclick="closeModal()" 
+              class="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-150">확인</button>
+    </div>
+  </div>
 
-  <script>
-    let budget = 0;
-    let total = 0;
-    let notified = {};
-    const thresholds = [10, 30, 50, 70, 90, 95];
+  <footer class="mt-8 text-sm text-gray-400">
+    잔고 요정 (Balance Fairy)
+  </footer>
 
-    function setBudget() {
-      const value = parseInt(document.getElementById('budget').value);
-      if (isNaN(value) || value <= 0) return alert("올바른 예산을 입력하세요.");
-      budget = value;
-      total = 0;
-      notified = {};
-      updateUI();
-      alert("예산이 설정되었습니다!");
-    }
+  <!-- Firebase Setup -->
+  <script type="module">
+    // --- Firebase Imports and Global Variables ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    function addExpense() {
-      const value = parseInt(document.getElementById('expense').value);
-      if (isNaN(value) || value <= 0) return alert("소비 금액을 입력하세요.");
-      total += value;
-      checkThresholds();
-      updateUI();
-      document.getElementById('expense').value = '';
-    }
+    // Global variables for Firebase services
+    let db;
+    let auth;
+    let userId = null;
+    let budgetDocRef = null;
+    let isInitialized = false;
+    let unsubscribeSnapshot = null;
+    let isPersistenceEnabled = true; // NEW FLAG: tracks if Firestore is active
 
-    function checkThresholds() {
-      const percent = (total / budget) * 100;
-      thresholds.forEach(t => {
-        if (percent >= t && !notified[t]) {
-          alert(`예산의 ${t}% 사용!`);
-          notified[t] = true;
+    // --- Data Variables (Global) ---
+    window.budget = 0;
+    window.total = 0;
+    // Budget usage percentage thresholds for notifications
+    window.thresholds = [10, 30, 50, 70, 90, 95];
+    window.notified = window.thresholds.map(() => false);
+    
+    // --- Firestore Initialization and Authentication ---
+    async function initFirebase() {
+        try {
+            document.getElementById('loading-overlay').style.display = 'flex';
+            
+            // 1. Get Config and App ID
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+            if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
+                console.error("Firebase config is missing. App will run without persistent storage.");
+                isPersistenceEnabled = false; // Disable persistence
+                document.getElementById('loading-overlay').style.display = 'none';
+                isInitialized = true;
+                updateUI(); // Immediately update UI with default (0, 0) state
+                return; // Exits if no config
+            }
+
+            // 2. Initialize App and Services
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            setLogLevel('Debug');
+            
+            // 3. Authentication
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+            await new Promise(resolve => {
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                    } else {
+                        // Sign in using the provided token if available, otherwise anonymously
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken).catch(e => {
+                                console.error("Custom token sign-in failed, falling back to anonymous:", e);
+                                return signInAnonymously(auth);
+                            });
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                        // Re-run onAuthStateChanged to pick up the new user/uid
+                        return; 
+                    }
+                    
+                    document.getElementById('user-id-display').textContent = userId;
+                    
+                    // 4. Set Document Reference
+                    const docPath = `artifacts/${appId}/users/${userId}/budget_data/state`;
+                    budgetDocRef = doc(db, docPath);
+
+                    // 5. Start Real-time Listener (onSnapshot)
+                    startSnapshotListener();
+
+                    isInitialized = true;
+                    resolve();
+                });
+            });
+
+        } catch (error) {
+            console.error("Firebase initialization failed:", error);
+            isPersistenceEnabled = false;
+            customAlert("데이터베이스 초기화 실패. 콘솔을 확인하세요.");
+        } finally {
+            document.getElementById('loading-overlay').style.display = 'none';
+            if (!isPersistenceEnabled) {
+                // If local/fallback mode, ensure UI updates once loading is done
+                updateUI();
+            }
         }
-      });
     }
 
-    function resetMonth() {
-      budget = 0;
-      total = 0;
-      notified = {};
-      updateUI();
-      alert("새로운 달로 초기화되었습니다.");
+    // Function to handle Real-time updates
+    function startSnapshotListener() {
+        if (unsubscribeSnapshot) {
+            unsubscribeSnapshot(); // Stop previous listener if active
+        }
+
+        unsubscribeSnapshot = onSnapshot(budgetDocRef, (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                window.budget = data.budget || 0;
+                window.total = data.total || 0;
+                // Safely merge stored notified state with current thresholds
+                const storedNotified = data.notified || [];
+                window.notified = window.thresholds.map((t, i) => storedNotified[i] || false);
+                
+                document.getElementById('budget-input').value = window.budget || '';
+            } else {
+                // Document doesn't exist, set initial state
+                window.budget = 0;
+                window.total = 0;
+                window.notified = window.thresholds.map(() => false);
+            }
+            // IMPORTANT: updateUI() is called after reading state from Firestore
+            updateUI(); 
+        }, (error) => {
+            console.error("Firestore snapshot error:", error);
+            customAlert("데이터 로드 중 오류가 발생했습니다.");
+        });
     }
 
-    function updateUI() {
-      const bar = document.getElementById('bar');
-      const status = document.getElementById('status');
-      if (!budget) {
-        bar.style.width = "0%";
-        status.innerText = "예산이 설정되지 않았습니다.";
-        return;
-      }
-      const percent = Math.min((total / budget) * 100, 100).toFixed(1);
-      bar.style.width = percent + "%";
-      status.innerText = `총 소비: ${total}원 (${percent}%)`;
+    // --- Modal Functions (Refactored for Alert and Confirm) ---
+
+    window.closeModal = function() {
+      document.getElementById('custom-modal').classList.remove('open');
     }
+
+    // Custom Modal implementation for simple messages (replaces alert())
+    window.customAlert = function(message) {
+      const modal = document.getElementById('custom-modal');
+      document.getElementById('modal-message').textContent = message;
+      
+      // Configure for alert
+      document.getElementById('modal-confirm-group').classList.add('hidden');
+      document.getElementById('modal-alert-btn').classList.remove('hidden');
+      
+      modal.classList.add('open');
+    }
+
+    // Custom Modal implementation for confirmation (replaces confirm())
+    window.customConfirm = function({ message, confirmText, cancelText, onConfirm, onCancel, isDestructive = false }) {
+        const modal = document.getElementById('custom-modal');
+        const confirmGroup = document.getElementById('modal-confirm-group');
+        const confirmBtn = document.getElementById('modal-confirm-btn');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+
+        document.getElementById('modal-message').textContent = message;
+        
+        // Configure for confirmation
+        document.getElementById('modal-alert-btn').classList.add('hidden');
+        confirmGroup.classList.remove('hidden');
+        confirmGroup.classList.add('flex'); // Ensure flex is applied when shown
+
+        // Set button texts and styles
+        confirmBtn.textContent = confirmText || "확인";
+        cancelBtn.textContent = cancelText || "취소";
+        
+        // Apply destructive style if needed
+        confirmBtn.classList.toggle('bg-red-600', isDestructive);
+        confirmBtn.classList.toggle('hover:bg-red-700', isDestructive);
+        confirmBtn.classList.toggle('bg-green-600', !isDestructive);
+        confirmBtn.classList.toggle('hover:bg-green-700', !isDestructive);
+
+        // Set up confirm action (Clone and replace to clear all previous listeners safely)
+        const newConfirmBtn = confirmBtn.cloneNode(true); 
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn); 
+        newConfirmBtn.onclick = () => {
+            closeModal();
+            onConfirm();
+        };
+
+        // Set up cancel action
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        newCancelBtn.onclick = () => {
+            closeModal();
+            if (onCancel) onCancel();
+        };
+
+        modal.classList.add('open');
+    }
+
+
+    // --- Utility Functions ---
+
+    window.saveToFirestore = async function() {
+        if (!isPersistenceEnabled || !budgetDocRef || !isInitialized) {
+             console.log("Persistence is disabled or Firestore not ready. Data not saved persistently.");
+             return; 
+        }
+        
+        try {
+            // Save the entire state object to a single document
+            await setDoc(budgetDocRef, {
+                budget: window.budget,
+                total: window.total,
+                notified: window.notified,
+                lastUpdate: new Date().toISOString()
+            });
+            console.log("Data saved to Firestore.");
+        } catch (e) {
+            console.error("Error writing document:", e);
+            customAlert("데이터 저장 실패.");
+        }
+    }
+
+    // New function to get customized notification messages
+    function getThresholdMessage(percent, limit) {
+        const limitStr = limit.toLocaleString();
+        switch (percent) {
+            case 10: return `👍 순조로운 시작! 전체 예산의 10% (${limitStr}원)를 사용했습니다.`;
+            case 30: return `💡 30% 도달! 예산의 3분의 1 (${limitStr}원)을 사용했어요. 계획 점검이 필요해요.`;
+            case 50: return `⚠️ 반환점 통과! 예산의 절반 (${limitStr}원)을 사용했습니다. 남은 기간을 확인하세요.`;
+            case 70: return `🚨 70% 주의! 예산이 빠르게 소진되고 있어요. 지출을 조절하세요!`;
+            case 90: return `🔥 비상! 90% (${limitStr}원)에 도달했습니다. 이번 달은 거의 끝났어요!`;
+            case 95: return `⛔️ 마지막 경고! 예산의 95% (${limitStr}원)가 사용되었습니다. 지출을 멈춰주세요!`;
+            default: return `🚨 예산 알림: ${percent}% (${limitStr}원) 사용했습니다.`;
+        }
+    }
+
+    window.checkThresholds = function() {
+        if (window.budget <= 0) return; // Cannot check thresholds without a budget
+
+        window.thresholds.forEach((t, i) => {
+            const limit = window.budget * (t / 100);
+            if (window.total >= limit && !window.notified[i]) {
+                const message = getThresholdMessage(t, limit);
+                notifyUser(message);
+                window.notified[i] = true;
+                // Since notified state changed, save it
+                window.saveToFirestore(); 
+            }
+        });
+    }
+
+    window.notifyUser = function(msg) {
+        if (Notification.permission === "granted") {
+            new Notification("잔고 요정 알림", { 
+                body: msg,
+                icon: 'https://placehold.co/48x48/60a5fa/ffffff?text=%24'
+            });
+        } else {
+            // Use custom modal instead of alert for non-granted notifications too
+            customAlert(msg);
+        }
+    }
+
+    window.updateUI = function() {
+        const bar = document.getElementById('bar');
+        const status = document.getElementById('status');
+        if (!window.budget) {
+            bar.style.width = "0%";
+            status.innerText = "예산이 설정되지 않았습니다.";
+            bar.classList.remove('bg-red-500');
+            return;
+        }
+
+        const percent = (window.total / window.budget) * 100;
+        const displayPercent = Math.min(percent, 100).toFixed(1);
+
+        // Update progress bar width and color
+        bar.style.width = displayPercent + "%";
+        bar.classList.toggle('bg-red-600', percent > 100); // More vibrant red for overspending
+        bar.classList.toggle('bg-blue-600', percent <= 100);
+
+        const remaining = window.budget - window.total;
+        
+        if (remaining >= 0) {
+             status.innerText = `총 소비: ${window.total.toLocaleString()}원 | 남은 예산: ${remaining.toLocaleString()}원 (${displayPercent}%)`;
+             status.classList.remove('text-red-500');
+             status.classList.add('text-gray-700');
+        } else {
+            status.innerText = `🚨 예산 초과: ${window.total.toLocaleString()}원 | 초과 금액: ${(-remaining).toLocaleString()}원 (${displayPercent}%)`;
+            status.classList.add('text-red-500');
+            status.classList.remove('text-gray-700');
+        }
+    }
+
+    // --- Main Application Logic ---
+
+    window.setBudget = function() {
+        const inputElement = document.getElementById('budget-input');
+        const value = parseInt(inputElement.value);
+
+        if (isNaN(value) || value <= 0) {
+            customAlert("⚠️ 올바른 예산 금액 (양수)을 입력하세요.");
+            return;
+        }
+        
+        const newBudget = value;
+
+        const setBudgetHandler = (resetTotal = false) => {
+            window.budget = newBudget;
+            if (resetTotal) {
+                window.total = 0;
+            }
+            window.notified = window.thresholds.map(() => false);
+            
+            // FIX: Ensure UI update runs synchronously before saving
+            updateUI(); 
+
+            window.saveToFirestore();
+            customAlert(`✅ 예산 ${newBudget.toLocaleString()}원으로 설정되었습니다. ` + (resetTotal ? "(소비 초기화됨)" : "(소비 유지됨)"));
+        };
+
+        // If there is existing expenditure, ask the user if they want to reset it.
+        if (window.total > 0 && window.budget > 0) { 
+            const message = `새 예산 ${newBudget.toLocaleString()}원으로 설정합니다. 기존 소비 기록(총 ${window.total.toLocaleString()}원)을 초기화할까요?`;
+            
+            window.customConfirm({
+                message: message,
+                confirmText: "소비 초기화",
+                cancelText: "소비 유지",
+                onConfirm: () => setBudgetHandler(true),
+                onCancel: () => setBudgetHandler(false),
+                isDestructive: false // Not destructive, setting up future
+            });
+            
+        } else {
+            // No existing data or budget, just set it and reset total for cleanliness
+            setBudgetHandler(true);
+        }
+    }
+
+    window.addExpense = function() {
+        if (!window.budget) {
+            customAlert("⚠️ 먼저 예산을 설정해 주세요.");
+            return;
+        }
+
+        const inputElement = document.getElementById('expense-input');
+        const value = parseInt(inputElement.value);
+
+        if (isNaN(value) || value <= 0) {
+            customAlert("⚠️ 소비 금액 (양수)을 입력하세요.");
+            return;
+        }
+
+        window.total += value;
+        window.checkThresholds();
+        
+        // FIX: Ensure UI update runs synchronously before saving
+        updateUI(); 
+
+        window.saveToFirestore();
+        inputElement.value = '';
+    }
+
+    window.resetMonth = function() {
+        const resetAction = () => {
+            window.budget = 0;
+            window.total = 0;
+            window.notified = window.thresholds.map(() => false);
+            
+            // FIX: Ensure UI update runs synchronously before saving
+            updateUI(); 
+            
+            window.saveToFirestore(); 
+            document.getElementById('budget-input').value = '';
+            customAlert("🔄 새로운 달로 초기화되었습니다.");
+        };
+
+        window.customConfirm({
+            message: "정말로 모든 예산 데이터를 초기화하고 새로운 달을 시작하시겠습니까?",
+            confirmText: "예, 초기화합니다",
+            cancelText: "취소",
+            onConfirm: resetAction,
+            isDestructive: true // This is a destructive action
+        });
+    }
+    
+    // --- Initial Setup Call ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Request notification permission immediately on load
+        if (Notification.permission !== "granted") {
+             Notification.requestPermission();
+        }
+        // Start Firebase initialization
+        initFirebase();
+    });
+
   </script>
 </body>
 </html>
