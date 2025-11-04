@@ -137,28 +137,17 @@
   <footer>Team 3 - 이나경, 최현서, 김수아랑, 김혜진, 이현진</footer>
 
   <script>
-    let budget = parseInt(localStorage.getItem('budget')) || 0;
-    let total = parseInt(localStorage.getItem('total')) || 0;
-    const thresholds = [10, 30, 50, 70, 90];
-    let notified = JSON.parse(localStorage.getItem('notified')) || thresholds.map(() => false);
-
-    document.getElementById('budget').value = budget || '';
-    updateUI();
-
-    if (Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
+    let budget = 0;
+    let total = 0;
+    let notified = {};
+    const thresholds = [10, 30, 50, 70, 90, 95];
 
     function setBudget() {
       const value = parseInt(document.getElementById('budget').value);
-      if (isNaN(value) || value <= 0) {
-        alert("올바른 예산을 입력하세요.");
-        return;
-      }
+      if (isNaN(value) || value <= 0) return alert("올바른 예산을 입력하세요.");
       budget = value;
       total = 0;
-      notified = thresholds.map(() => false);
-      save();
+      notified = {};
       updateUI();
       alert("예산이 설정되었습니다!");
     }
@@ -166,51 +155,28 @@
     function addExpense() {
       const value = parseInt(document.getElementById('expense').value);
       if (isNaN(value) || value <= 0) return alert("소비 금액을 입력하세요.");
-
       total += value;
       checkThresholds();
-      save();
       updateUI();
       document.getElementById('expense').value = '';
     }
 
     function checkThresholds() {
-      thresholds.forEach((t, i) => {
-        const limit = budget * (t / 100);
-        if (total >= limit && !notified[i]) {
-          notifyUser(`예산의 ${t}% (${limit.toLocaleString()}원) 사용했습니다.`);
-          notified[i] = true;
+      const percent = (total / budget) * 100;
+      thresholds.forEach(t => {
+        if (percent >= t && !notified[t]) {
+          alert(`예산의 ${t}% 사용!`);
+          notified[t] = true;
         }
       });
-    }
-
-    function notifyUser(msg) {
-      if (Notification.permission === "granted") {
-        new Notification("Budget Alert", { body: msg });
-      } else {
-        alert(msg);
-      }
     }
 
     function resetMonth() {
       budget = 0;
       total = 0;
-      notified = thresholds.map(() => false);
-      try {
-        localStorage.removeItem('budget');
-        localStorage.removeItem('total');
-        localStorage.removeItem('notified');
-      } catch(e) {
-        console.error("데이터 초기화 실패", e);
-      }
+      notified = {};
       updateUI();
       alert("새로운 달로 초기화되었습니다.");
-    }
-
-    function save() {
-      localStorage.setItem('budget', budget);
-      localStorage.setItem('total', total);
-      localStorage.setItem('notified', JSON.stringify(notified));
     }
 
     function updateUI() {
@@ -223,7 +189,7 @@
       }
       const percent = Math.min((total / budget) * 100, 100).toFixed(1);
       bar.style.width = percent + "%";
-      status.innerText = `총 소비: ${total.toLocaleString()}원 (${percent}%)`;
+      status.innerText = `총 소비: ${total}원 (${percent}%)`;
     }
   </script>
 </body>
