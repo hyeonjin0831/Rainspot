@@ -173,7 +173,6 @@
     let budgetDocRef = null;
     let isInitialized = false;
     let unsubscribeSnapshot = null;
-    let isPersistenceEnabled = true; // NEW FLAG: tracks if Firestore is active
 
     // --- Data Variables (Global) ---
     window.budget = 0;
@@ -192,12 +191,8 @@
             const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
 
             if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                console.error("Firebase config is missing. App will run without persistent storage.");
-                isPersistenceEnabled = false; // Disable persistence
-                document.getElementById('loading-overlay').style.display = 'none';
-                isInitialized = true;
-                updateUI(); // Immediately update UI with default (0, 0) state
-                return; // Exits if no config
+                console.error("Firebase config is missing.");
+                throw new Error("Firebase configuration error.");
             }
 
             // 2. Initialize App and Services
@@ -243,14 +238,9 @@
 
         } catch (error) {
             console.error("Firebase initialization failed:", error);
-            isPersistenceEnabled = false;
             customAlert("데이터베이스 초기화 실패. 콘솔을 확인하세요.");
         } finally {
             document.getElementById('loading-overlay').style.display = 'none';
-            if (!isPersistenceEnabled) {
-                // If local/fallback mode, ensure UI updates once loading is done
-                updateUI();
-            }
         }
     }
 
@@ -270,14 +260,14 @@
                 window.notified = window.thresholds.map((t, i) => storedNotified[i] || false);
                 
                 document.getElementById('budget-input').value = window.budget || '';
+                updateUI();
             } else {
                 // Document doesn't exist, set initial state
                 window.budget = 0;
                 window.total = 0;
                 window.notified = window.thresholds.map(() => false);
+                updateUI();
             }
-            // IMPORTANT: updateUI() is called after reading state from Firestore
-            updateUI(); 
         }, (error) => {
             console.error("Firestore snapshot error:", error);
             customAlert("데이터 로드 중 오류가 발생했습니다.");
@@ -349,10 +339,7 @@
     // --- Utility Functions ---
 
     window.saveToFirestore = async function() {
-        if (!isPersistenceEnabled || !budgetDocRef || !isInitialized) {
-             console.log("Persistence is disabled or Firestore not ready. Data not saved persistently.");
-             return; 
-        }
+        if (!budgetDocRef || !isInitialized) return console.error("Firestore not ready.");
         
         try {
             // Save the entire state object to a single document
@@ -400,7 +387,7 @@
 
     window.notifyUser = function(msg) {
         if (Notification.permission === "granted") {
-            new Notification("잔고 요정 알림", { 
+            new Notification("잔고 요정 알림", { // CHANGED: Updated notification title
                 body: msg,
                 icon: 'https://placehold.co/48x48/60a5fa/ffffff?text=%24'
             });
@@ -460,10 +447,6 @@
                 window.total = 0;
             }
             window.notified = window.thresholds.map(() => false);
-            
-            // FIX: Ensure UI update runs synchronously before saving
-            updateUI(); 
-
             window.saveToFirestore();
             customAlert(`✅ 예산 ${newBudget.toLocaleString()}원으로 설정되었습니다. ` + (resetTotal ? "(소비 초기화됨)" : "(소비 유지됨)"));
         };
@@ -503,10 +486,6 @@
 
         window.total += value;
         window.checkThresholds();
-        
-        // FIX: Ensure UI update runs synchronously before saving
-        updateUI(); 
-
         window.saveToFirestore();
         inputElement.value = '';
     }
@@ -516,10 +495,6 @@
             window.budget = 0;
             window.total = 0;
             window.notified = window.thresholds.map(() => false);
-            
-            // FIX: Ensure UI update runs synchronously before saving
-            updateUI(); 
-            
             window.saveToFirestore(); 
             document.getElementById('budget-input').value = '';
             customAlert("🔄 새로운 달로 초기화되었습니다.");
